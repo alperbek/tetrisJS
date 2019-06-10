@@ -466,6 +466,7 @@ function CheckForCompletedRows() {
         ctx.fillText(score.toString(), 310, 127);
         MoveAllRowsDown(rowsToDelete, startOfDeletion);
 
+        // do some logic to increment difficulty and redraw level
         if (score % 100 == 0) {
             speed++;
             level++;
