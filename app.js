@@ -6,9 +6,18 @@ let startX = 4; // Starting X position for Tetromino
 let startY = 0; // Starting Y position for Tetromino
 let score = 0; // Tracks the score
 let level = 1; // Tracks current level
+let levelUp = 20; // Tracks current level
 let speed = 1; // set speed to 1
 let timer;  // set timer variable to clear interval
 let winOrLose = "Playing";
+let isPaused = false;
+let highScore = 0;
+localStorage.setItem('highscore', 0);
+if (localStorage.getItem('highscore')) {
+    highScore = localStorage.getItem('highscore');
+} else {
+    localStorage.setItem('highscore', 0);
+}
 // Used as a look up table where each value in the array
 // contains the x & y position we can use to draw the
 // box on the canvas
@@ -39,6 +48,14 @@ let DIRECTION = {
     RIGHT: 3
 };
 let direction;
+
+let KEYS = {
+    LEFT: 65,
+    RIGHT: 68,
+    DOWN: 83,
+    ROTATE: 87,
+    PAUSE: 80
+}
 
 class Coordinates {
     constructor(x, y) {
@@ -84,51 +101,42 @@ function SetupCanvas() {
     ctx.strokeStyle = 'gold';
     ctx.strokeRect(8, 8, 280, 462);
 
-    tetrisLogo = new Image(161, 54);
+    tetrisLogo = new Image(160, 54);
     tetrisLogo.onload = DrawTetrisLogo;
     tetrisLogo.src = "tetrislogo.png";
 
     // Set font for score label text and draw
     ctx.fillStyle = 'gray';
     ctx.font = '21px Arial';
-    ctx.fillText("SCORE", 300, 98);
-
-    // Draw score rectangle
-    ctx.strokeRect(300, 107, 161, 24);
+    // Draw highscore
+    ctx.fillText("HIGHSCORE", 300, 100);
+    ctx.strokeRect(300, 105, 160, 25);
+    ctx.fillText(highScore.toString(), 305, 125);
 
     // Draw score
-    ctx.fillText(score.toString(), 310, 127);
-
-    // Draw level label text
-    ctx.fillText("LEVEL", 300, 157);
-
-    // Draw level rectangle
-    ctx.strokeRect(300, 171, 161, 24);
+    ctx.fillText("SCORE", 300, 155);
+    ctx.strokeRect(300, 160, 160, 25);
+    ctx.fillText(score.toString(), 305, 180);
 
     // Draw level
-    ctx.fillText(level.toString(), 310, 190);
+    ctx.fillText("LEVEL", 300, 210);
+    ctx.strokeRect(300, 215, 160, 25);
+    ctx.fillText(level.toString(), 305, 235);
 
-    // Draw next label text
-    ctx.fillText("WIN / LOSE", 300, 221);
+    // Draw next
+    ctx.fillText("WIN / LOSE", 300, 265);
+    ctx.strokeRect(300, 270, 160, 25);
+    ctx.fillText(winOrLose, 305, 288);
 
-    // Draw playing condition
-    ctx.fillText(winOrLose, 310, 261);
-
-    // Draw playing condition rectangle
-    ctx.strokeRect(300, 232, 161, 95);
-
-    // Draw controls label text
-    ctx.fillText("CONTROLS", 300, 354);
-
-    // Draw controls rectangle
-    ctx.strokeRect(300, 366, 161, 104);
-
-    // Draw controls text
+    // // Draw controls
+    ctx.fillText("CONTROLS", 300, 335);
+    ctx.strokeRect(300, 341, 160, 129);
     ctx.font = '19px Arial';
-    ctx.fillText("A : Move Left", 310, 388);
-    ctx.fillText("D : Move Right", 310, 413);
-    ctx.fillText("S : Move Down", 310, 438);
-    ctx.fillText("W : Rotate Right", 310, 463);
+    ctx.fillText("A: Move Left", 305, 363);
+    ctx.fillText("D: Move Right", 305, 388);
+    ctx.fillText("S: Move Down", 305, 413);
+    ctx.fillText("W: Rotate Right", 305, 438);
+    ctx.fillText("P: Pause", 305, 463);
 
     // 2. Handle keyboard presses
     document.addEventListener('keydown', HandleKeyPress);
@@ -145,7 +153,7 @@ function SetupCanvas() {
 }
 
 function DrawTetrisLogo() {
-    ctx.drawImage(tetrisLogo, 300, 8, 161, 54);
+    ctx.drawImage(tetrisLogo, 300, 8, 160, 54);
 }
 
 function DrawTetromino() {
@@ -180,10 +188,11 @@ function DrawTetromino() {
 // Each time a key is pressed we change the either the starting
 // x or y value for where we want to draw the new Tetromino
 // We also delete the previously drawn shape and draw the new one
-function HandleKeyPress(key) {
+function HandleKeyPress(e) {
     if (winOrLose != "Game Over") {
+        let key = e.keyCode;
         // a keycode (LEFT)
-        if (key.keyCode === 65) {
+        if (key === KEYS.LEFT && !isPaused) {
             // 4. Check if I'll hit the wall
             direction = DIRECTION.LEFT;
             if (!HittingTheWall() && !CheckForHorizontalCollision()) {
@@ -193,7 +202,7 @@ function HandleKeyPress(key) {
             }
 
             // d keycode (RIGHT)
-        } else if (key.keyCode === 68) {
+        } else if (key === KEYS.RIGHT && !isPaused) {
 
             // 4. Check if I'll hit the wall
             direction = DIRECTION.RIGHT;
@@ -204,11 +213,16 @@ function HandleKeyPress(key) {
             }
 
             // s keycode (DOWN)
-        } else if (key.keyCode === 83) {
+        } else if (key === KEYS.DOWN && !isPaused) {
             MoveTetrominoDown();
+
             // 9. w keycode calls for rotation of Tetromino
-        } else if (key.keyCode === 87) {
+        } else if (key === KEYS.ROTATE && !isPaused) {
             RotateTetromino();
+
+            // p keycode calls the pause
+        } else if (key === KEYS.PAUSE) {
+            isPaused = !isPaused;
         }
     }
 }
@@ -227,9 +241,11 @@ function MoveTetrominoDown() {
 
 // 10. Automatically calls for a Tetromino to fall every second
 function setSpeed(speed) {
-    timer = window.setInterval(function () {
-        if (winOrLose != "Game Over") {
-            MoveTetrominoDown();
+    timer = window.setInterval(() => {
+        if (!isPaused) {
+            if (winOrLose != "Game Over") {
+                MoveTetrominoDown();
+            }
         }
     }, 1000 / speed);
 }
@@ -346,9 +362,9 @@ function CheckForVerticalCollison() {
         if (startY <= 2) {
             winOrLose = "Game Over";
             ctx.fillStyle = 'white';
-            ctx.fillRect(310, 242, 140, 30);
+            ctx.fillRect(305, 272, 140, 22);
             ctx.fillStyle = 'gray';
-            ctx.fillText(winOrLose, 310, 261);
+            ctx.fillText(winOrLose, 305, 288);
         } else {
 
             // 6. Add stopped Tetromino to stopped shape array
@@ -460,22 +476,31 @@ function CheckForCompletedRows() {
     }
     if (rowsToDelete > 0) {
         score += 10;
+        // update highscore
+        if (score > localStorage.getItem('highscore')) {
+            localStorage.setItem('highscore', score);
+            ctx.fillStyle = 'white';
+            ctx.fillRect(301, 109, 140, 20);
+            ctx.fillStyle = 'gray';
+            ctx.fillText(score.toString(), 305, 125);
+        }
+        // update score
         ctx.fillStyle = 'white';
-        ctx.fillRect(310, 109, 140, 19);
+        ctx.fillRect(301, 162, 140, 20);
         ctx.fillStyle = 'gray';
-        ctx.fillText(score.toString(), 310, 127);
+        ctx.fillText(score.toString(), 305, 180);
         MoveAllRowsDown(rowsToDelete, startOfDeletion);
 
         // do some logic to increment difficulty and redraw level
-        if (score % 100 == 0) {
+        if (score % levelUp == 0) {
             speed++;
             level++;
             ctx.fillStyle = 'white';
             // Draw level rectangle
-            ctx.fillRect(300, 171, 161, 24);
+            ctx.fillRect(302, 218, 150, 20);
             // Draw level
             ctx.fillStyle = 'gray';
-            ctx.fillText(level.toString(), 310, 190);
+            ctx.fillText(level.toString(), 305, 235);
             clearInterval(timer);
             setSpeed(speed);
         }
